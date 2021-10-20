@@ -1,6 +1,7 @@
 import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
 import { ExecutionContextHost } from '@nestjs/core/helpers/execution-context-host';
 import { createRequest, createResponse } from 'node-mocks-http';
+import 'reflect-metadata';
 import { getClient } from 'test/common';
 import { Client } from '../decorators/client.decorator';
 import { Client as ClientEntity } from '../entities/client.entity';

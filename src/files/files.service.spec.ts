@@ -36,7 +36,7 @@ describe('FilesService', () => {
     jest
       .useFakeTimers('modern')
       .setSystemTime(new Date('2011-06-06T18:00:00.000Z').getTime());
-    jest.spyOn(processesService, 'findOne').mockImplementation(getProcess);
+    jest.spyOn(processesService, 'findOne').mockReturnValue(getProcess());
     const processesServiceSetFile = jest
       .spyOn(processesService, 'setFile')
       .mockImplementation(async () => {
@@ -47,15 +47,11 @@ describe('FilesService', () => {
       .mockImplementation(async () => {
         /* do nothing */
       });
-    const file = getFile(
-      resource.transactionId,
-      resource.processId,
-      resource.fileId,
-    );
+    const file = getFile(resource.fileId);
     await filesService.create(
       resource.transactionId,
       resource.processId,
-      file.id,
+      resource.fileId,
       file.name,
       file.accessableBy,
       file.mime,
@@ -64,6 +60,7 @@ describe('FilesService', () => {
     expect(processesServiceSetFile).toHaveBeenCalledWith(
       resource.transactionId,
       resource.processId,
+      resource.fileId,
       file,
     );
     expect(processesServiceSetFile).toHaveBeenCalledTimes(1);
@@ -77,14 +74,8 @@ describe('FilesService', () => {
   });
 
   it('should get', () => {
-    const file = getFile(
-      resource.transactionId,
-      resource.processId,
-      resource.fileId,
-    );
-    const process = getProcess(resource.transactionId, resource.processId, [
-      file,
-    ]);
+    const file = getFile(resource.fileId);
+    const process = getProcess([{ fileId: resource.fileId, file: file }]);
     jest.spyOn(processesService, 'findOne').mockReturnValue(process);
     expect(
       filesService.findOne(

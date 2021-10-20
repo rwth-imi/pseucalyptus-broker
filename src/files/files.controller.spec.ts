@@ -87,7 +87,7 @@ describe('FilesController', () => {
         resource.processId,
         resource.fileId,
         getClient.valid(),
-        createProp.accessableBy.join(','),
+        (<unknown>createProp.accessableBy.join(',')) as Array<string>,
         createProp.mime,
         createProp.file,
       );

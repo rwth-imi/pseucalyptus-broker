@@ -55,6 +55,26 @@ describe('AppController (e2e)', () => {
     await fs.promises.rm(datadir, { recursive: true });
   });
 
+  it('/transactions (GET)', () => {
+    const res = {};
+    res[resource.transactionId] = JSON.parse(transactionMetadata);
+    return request(app.getHttpServer())
+      .get('/transactions')
+      .set('x-client-id', getClient.valid().id)
+      .set('x-client-domain', getClient.valid().domain)
+      .expect(200)
+      .expect(res);
+  });
+
+  it('/transactions (GET) exclude PID', () => {
+    return request(app.getHttpServer())
+      .get('/transactions/?filterUnprocessed=PID')
+      .set('x-client-id', getClient.valid().id)
+      .set('x-client-domain', getClient.valid().domain)
+      .expect(200)
+      .expect({});
+  });
+
   it('/transactions (POST)', () => {
     return request(app.getHttpServer())
       .post('/transactions')

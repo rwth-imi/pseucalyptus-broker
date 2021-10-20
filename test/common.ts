@@ -42,41 +42,32 @@ export const getClient = {
 };
 
 export const getTransaction = (
-  transactionId: string,
-  withProcesses: Array<Process> = [],
+  withProcesses: Array<{ processId: string; process: Process }> = [],
 ): Transaction => {
   const transaction: Transaction = new Transaction();
-  transaction.id = transactionId;
   transaction.createdAt = new Date('2011-06-06T18:00:00.000Z');
   transaction.createdBy = getClient.valid();
   transaction.processes = new Map<string, Process>();
-  withProcesses.forEach((process: Process) => {
-    transaction.processes.set(process.id, process);
+  withProcesses.forEach(({ processId, process }) => {
+    transaction.processes.set(processId, process);
   });
   return transaction;
 };
 export const getProcess = (
-  transactionId: string,
-  processId: string,
-  withFiles: Array<File> = [],
+  withFiles: Array<{ fileId: string; file: File }> = [],
 ): Process => {
   const process: Process = new Process();
-  process.id = processId;
   process.createdAt = new Date('2011-06-06T18:00:00.000Z');
   process.createdBy = getClient.valid();
   process.files = new Map<string, File>();
-  withFiles.forEach((file: File) => {
-    process.files.set(file.id, file);
+  withFiles.forEach(({ fileId, file }) => {
+    process.files.set(fileId, file);
   });
   return process;
 };
-export const getFile = (
-  transactionId: string,
-  processId: string,
-  fileId: string,
-): File => {
+export const getFile = (fileId: string): File => {
   const file: File = new File();
-  (file.id = fileId), (file.name = fileId);
+  file.name = fileId;
   file.createdAt = new Date('2011-06-06T18:00:00.000Z');
   file.accessableBy = [getClient.valid().domain];
   file.mime = 'text/plain';
@@ -88,15 +79,12 @@ export const getDataStructure = (): {
   process: Process;
   file: File;
 } => {
-  const file = getFile(
-    resource.transactionId,
-    resource.processId,
-    resource.fileId,
-  );
-  const process = getProcess(resource.transactionId, resource.processId, [
-    file,
-  ]);
-  const transaction = getTransaction(resource.transactionId, [process]);
+  const processId = resource.processId;
+  const fileId = resource.fileId;
+
+  const file = getFile(fileId);
+  const process = getProcess([{ fileId, file }]);
+  const transaction = getTransaction([{ processId, process }]);
   return {
     transaction,
     process,

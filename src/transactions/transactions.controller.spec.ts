@@ -1,16 +1,14 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { createRequest, createResponse } from 'node-mocks-http';
+import { Client } from 'src/clients/entities/client.entity';
+import { Process } from 'src/processes/entities/process.entity';
 import { StorageModule } from 'src/storage/storage.module';
 import { StorageService } from 'src/storage/storage.service';
-import {
-  getClient,
-  getDataStructure,
-  getTransaction,
-  resource,
-} from 'test/common';
+import { getClient, getDataStructure, resource } from 'test/common';
 import { Transaction } from './entities/transaction.entity';
 import { TransactionsController } from './transactions.controller';
+import { TransactionsGateway } from './transactions.gateway';
 import { TransactionsService } from './transactions.service';
 
 describe('TransactionsController', () => {
@@ -21,7 +19,7 @@ describe('TransactionsController', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [StorageModule],
       controllers: [TransactionsController],
-      providers: [TransactionsService],
+      providers: [TransactionsService, TransactionsGateway],
     })
       .overrideProvider(StorageService)
       .useValue({})
@@ -38,62 +36,115 @@ describe('TransactionsController', () => {
   });
 
   it('should create', async () => {
-    const transaction: Transaction = getTransaction(resource.transactionId);
     const transactionsServiceCreate = jest
       .spyOn(transactionsService, 'create')
-      .mockResolvedValue(transaction);
+      .mockResolvedValue(resource.transactionId);
     const client = getClient.valid();
     const res = createResponse();
     res.req = createRequest();
     res.req.url = '/api/v1/transactions';
     await transactionsController.create(client, res);
     expect(res.getHeader('Location')).toEqual(
-      res.req.url + '/' + transaction.id,
+      res.req.url + '/' + resource.transactionId,
     );
     expect(transactionsServiceCreate).toHaveBeenCalledWith(client);
     expect(transactionsServiceCreate).toHaveBeenCalledTimes(1);
   });
 
-  it('should findOne TransactionOwner', () => {
-    const { transaction } = getDataStructure();
-    jest.spyOn(transactionsService, 'findOne').mockReturnValue(transaction);
-    expect(
-      transactionsController.findOne(transaction.id, getClient.valid()),
-    ).resolves.toEqual(transaction);
+  describe('should findMy', () => {
+    let client: Client;
+    let map: Map<string, Transaction>;
+    let transactionsServiceFindFiltered;
+
+    beforeEach(() => {
+      client = getClient.valid();
+      map = new Map<string, Transaction>();
+      map.set(resource.transactionId, getDataStructure().transaction);
+      transactionsServiceFindFiltered = jest
+        .spyOn(transactionsService, 'findFiltered')
+        .mockReturnValue(map);
+    });
+
+    afterEach(() => {
+      expect(transactionsServiceFindFiltered).toHaveBeenCalledTimes(1);
+    });
+
+    it('without filter', () => {
+      expect(transactionsController.findMy(client)).resolves.toEqual(map);
+      expect(transactionsServiceFindFiltered).toHaveBeenCalledWith(client, []);
+    });
+
+    describe('filter set', () => {
+      afterEach(() => {
+        expect(transactionsServiceFindFiltered).toHaveBeenCalledWith(client, [
+          'noPID',
+        ]);
+      });
+
+      it('string', () => {
+        expect(transactionsController.findMy(client, 'noPID')).resolves.toEqual(
+          map,
+        );
+      });
+
+      it('string-array', () => {
+        expect(
+          transactionsController.findMy(client, ['noPID']),
+        ).resolves.toEqual(map);
+      });
+    });
   });
 
-  it('should findOne ProcessOwner', () => {
-    const { transaction } = getDataStructure();
-    transaction.createdBy = getClient.invalid();
-    jest.spyOn(transactionsService, 'findOne').mockReturnValue(transaction);
-    expect(
-      transactionsController.findOne(transaction.id, getClient.valid()),
-    ).resolves.toEqual(transaction);
-  });
+  describe('findOne', () => {
+    let transaction: Transaction, process: Process;
 
-  it('should findOne FileOwner', () => {
-    const { transaction, process } = getDataStructure();
-    transaction.createdBy = getClient.invalid();
-    process.createdBy = getClient.invalid();
-    jest.spyOn(transactionsService, 'findOne').mockReturnValue(transaction);
-    expect(
-      transactionsController.findOne(transaction.id, getClient.valid()),
-    ).resolves.toEqual(transaction);
-  });
+    beforeEach(() => {
+      ({ transaction, process } = getDataStructure());
+      jest.spyOn(transactionsService, 'findOne').mockReturnValue(transaction);
+    });
 
-  it('should not findOne NotFound', () => {
-    jest.spyOn(transactionsService, 'findOne').mockReturnValue(undefined);
-    expect(
-      transactionsController.findOne(resource.transactionId, getClient.valid()),
-    ).rejects.toThrow(NotFoundException);
-  });
+    describe('should findOne as', () => {
+      afterEach(() => {
+        expect(
+          transactionsController.findOne(
+            resource.transactionId,
+            getClient.valid(),
+          ),
+        ).resolves.toEqual(transaction);
+      });
 
-  it('should not findOne Forbidden', () => {
-    const { transaction } = getDataStructure();
-    jest.spyOn(transactionsService, 'findOne').mockReturnValue(transaction);
-    expect(
-      transactionsController.findOne(transaction.id, getClient.attacker()),
-    ).rejects.toThrow(ForbiddenException);
+      it('TransactionOwner', () => {
+        /* Nothing todo */
+      });
+
+      it('should findOne ProcessOwner', () => {
+        transaction.createdBy = getClient.invalid();
+      });
+
+      it('should findOne FileOwner', () => {
+        transaction.createdBy = getClient.invalid();
+        process.createdBy = getClient.invalid();
+      });
+    });
+
+    it('should not findOne NotFound', () => {
+      jest.spyOn(transactionsService, 'findOne').mockReturnValue(undefined);
+      expect(
+        transactionsController.findOne(
+          resource.transactionId,
+          getClient.valid(),
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should not findOne Forbidden', () => {
+      expect(
+        transactionsController.findOne(
+          resource.transactionId,
+          getClient.attacker(),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
   });
 
   it('should delete', async () => {
@@ -104,8 +155,13 @@ describe('TransactionsController', () => {
       .mockImplementation(async () => {
         /* do nothing */
       });
-    await transactionsController.delete(transaction.id, getClient.valid());
-    expect(transactionsServiceDelete).toHaveBeenCalledWith(transaction);
+    await transactionsController.delete(
+      resource.transactionId,
+      getClient.valid(),
+    );
+    expect(transactionsServiceDelete).toHaveBeenCalledWith(
+      resource.transactionId,
+    );
     expect(transactionsServiceDelete).toHaveBeenCalledTimes(1);
   });
 
@@ -128,7 +184,10 @@ describe('TransactionsController', () => {
         /* do nothing */
       });
     expect(
-      transactionsController.delete(transaction.id, getClient.attacker()),
+      transactionsController.delete(
+        resource.transactionId,
+        getClient.attacker(),
+      ),
     ).rejects.toThrow(ForbiddenException);
     expect(transactionsServiceDelete).toHaveBeenCalledTimes(0);
   });

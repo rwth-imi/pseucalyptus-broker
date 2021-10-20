@@ -14,10 +14,9 @@ export class ProcessesService {
     createdBy: Client,
   ): Promise<void> {
     const process: Process = new Process();
-    process.id = processId;
     process.createdAt = new Date();
     process.createdBy = createdBy;
-    this.transactionsService.setProcess(transactionId, process);
+    this.transactionsService.setProcess(transactionId, processId, process);
   }
 
   findOne(transactionId: string, processId: string): Process {
@@ -26,9 +25,14 @@ export class ProcessesService {
       .processes.get(processId);
   }
 
-  async setFile(transactionId: string, processId: string, file: File) {
+  async setFile(
+    transactionId: string,
+    processId: string,
+    fileId: string,
+    file: File,
+  ) {
     const process: Process = this.findOne(transactionId, processId);
-    process.files.set(file.id, file);
-    this.transactionsService.setProcess(transactionId, process);
+    process.files.set(fileId, file);
+    this.transactionsService.setProcess(transactionId, processId, process);
   }
 }

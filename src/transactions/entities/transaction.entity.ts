@@ -1,13 +1,9 @@
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { Exclude, Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { Client } from 'src/clients/entities/client.entity';
 import { Process } from 'src/processes/entities/process.entity';
 
 export class Transaction {
-  @ApiHideProperty()
-  @Exclude()
-  id: string;
-
   @Type(() => Date)
   createdAt: Date;
 

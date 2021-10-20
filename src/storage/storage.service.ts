@@ -7,57 +7,78 @@ import { Stream } from 'stream';
 
 @Injectable()
 export class StorageService {
-  private readonly transactions = new Map<string, Transaction>();
-  /*private readonly clients = new Map<string, Client>();
-
-  private readonly clientsDir = path.join('data', 'clients');
-  private readonly clientMetadataPath = (clientId: string) => path.join(this.clientsDir, clientId + '.json');*/
+  private readonly transactions: Map<string, Transaction> = new Map<
+    string,
+    Transaction
+  >();
+  private readonly acl: Map<string, Map<string, Transaction>> = new Map<
+    string,
+    Map<string, Transaction>
+  >();
 
   private readonly transactionsDir = path.join(
     process.env.DATADIR ? process.env.DATADIR : 'data',
     'transactions',
   );
   private readonly transactionPath = (transactionId: string) =>
-    path.join(this.transactionsDir, transactionId);
+    path.join(this.transactionsDir, encodeURIComponent(transactionId));
   private readonly transactionMetadataPath = (transactionId: string) =>
     path.join(this.transactionPath(transactionId), 'metadata.json');
   private readonly processPath = (transactionId: string, processId: string) =>
-    path.join(this.transactionPath(transactionId), processId);
+    path.join(
+      this.transactionPath(transactionId),
+      encodeURIComponent(processId),
+    );
   private readonly filePath = (
     transactionId: string,
     processId: string,
     fileId: string,
-  ) => path.join(this.processPath(transactionId, processId), fileId);
+  ) =>
+    path.join(
+      this.processPath(transactionId, processId),
+      encodeURIComponent(fileId),
+    );
 
   constructor() {
     fs.mkdirSync(this.transactionsDir, { recursive: true });
     const transactionIds: string[] = fs
       .readdirSync(this.transactionsDir, { withFileTypes: true })
       .filter((dirent) => dirent.isDirectory())
-      .map((dirent) => dirent.name);
+      .map((dirent) => decodeURIComponent(dirent.name));
     transactionIds.forEach((transactionId) => {
       const transaction: Transaction = deserialize<Transaction>(
         Transaction,
         fs.readFileSync(this.transactionMetadataPath(transactionId)).toString(),
       );
-      transaction.id = transactionId;
-      transaction.processes.forEach((process, processId) => {
-        process.id = processId;
-        process.files.forEach((file, fileId) => {
-          file.id = fileId;
-        });
-      });
-      this.transactions.set(transaction.id, transaction);
+      this.cacheTransaction(transactionId, transaction);
     });
   }
 
-  async setTransaction(transaction: Transaction) {
-    this.transactions.set(transaction.id, transaction);
-    await fs.promises.mkdir(this.transactionPath(transaction.id), {
+  private cacheTransaction(
+    transactionId: string,
+    transaction: Transaction,
+  ): void {
+    transaction.processes.forEach((process) => {
+      process.files.forEach((file) => {
+        file.accessableBy.forEach((domain: string) => {
+          const aclMap: Map<string, Transaction> = this.acl.has(domain)
+            ? this.acl.get(domain)
+            : new Map<string, Transaction>();
+          aclMap.set(transactionId, transaction);
+          this.acl.set(domain, aclMap);
+        });
+      });
+    });
+    this.transactions.set(transactionId, transaction);
+  }
+
+  async setTransaction(transactionId: string, transaction: Transaction) {
+    this.cacheTransaction(transactionId, transaction);
+    await fs.promises.mkdir(this.transactionPath(transactionId), {
       recursive: true,
     });
     await fs.promises.writeFile(
-      this.transactionMetadataPath(transaction.id),
+      this.transactionMetadataPath(transactionId),
       serialize<Transaction>(transaction, { enableCircularCheck: true }),
     );
   }
@@ -66,9 +87,14 @@ export class StorageService {
     return this.transactions.get(transactionId);
   }
 
-  async deleteTransaction(transaction: Transaction): Promise<void> {
-    this.transactions.delete(transaction.id);
-    await fs.promises.rm(this.transactionPath(transaction.id), {
+  getAclTransactions(domain: string): Map<string, Transaction> {
+    const t = this.acl.get(domain);
+    return t ? t : new Map<string, Transaction>();
+  }
+
+  async deleteTransaction(transactionId: string): Promise<void> {
+    this.transactions.delete(transactionId);
+    await fs.promises.rm(this.transactionPath(transactionId), {
       recursive: true,
     });
   }

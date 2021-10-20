@@ -40,7 +40,7 @@ export class FilesController {
     @Param('processId') processId: string,
     @Param('fileId') fileId: string,
     @Client() client: ClientEntity,
-    @Headers('x-accessable-by') accessableBy: Array<string> | string,
+    @Headers('x-accessable-by') accessableBy: Array<string>,
     @Headers('content-type') mime: string,
     @Req() file: Stream,
   ): Promise<void> {
@@ -59,7 +59,7 @@ export class FilesController {
      */
     let _accessableBy: Array<string>;
     if (typeof accessableBy == 'string')
-      _accessableBy = accessableBy.split(',');
+      _accessableBy = (<string>accessableBy).split(',');
     else _accessableBy = accessableBy;
 
     await this.filesService.create(

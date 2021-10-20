@@ -4,7 +4,7 @@ import { StorageService } from 'src/storage/storage.service';
 import { Transaction } from 'src/transactions/entities/transaction.entity';
 import { TransactionsModule } from 'src/transactions/transactions.module';
 import { TransactionsService } from 'src/transactions/transactions.service';
-import { getClient, getDataStructure } from 'test/common';
+import { getClient, getDataStructure, resource } from 'test/common';
 import { Process } from './entities/process.entity';
 import { ProcessesController } from './processes.controller';
 import { ProcessesService } from './processes.service';
@@ -37,48 +37,37 @@ describe('ProcessesController', () => {
     expect(processesController).toBeDefined();
   });
 
-  it('should create TransactionOwner', async () => {
-    jest.spyOn(transactionsService, 'findOne').mockReturnValue(transaction);
-    jest.spyOn(processesService, 'findOne').mockReturnValue(process);
-    const processesServiceCreate = jest
-      .spyOn(processesService, 'create')
-      .mockImplementation(async () => {
-        /* do nothing */
-      });
-    await processesController.create(
-      transaction.id,
-      process.id,
-      getClient.valid(),
-    );
-    expect(processesServiceCreate).toHaveBeenCalledWith(
-      transaction.id,
-      process.id,
-      getClient.valid(),
-    );
-    expect(processesServiceCreate).toHaveBeenCalledTimes(1);
-  });
+  describe('should create as', () => {
+    afterEach(async () => {
+      jest.spyOn(transactionsService, 'findOne').mockReturnValue(transaction);
+      jest.spyOn(processesService, 'findOne').mockReturnValue(process);
+      const processesServiceCreate = jest
+        .spyOn(processesService, 'create')
+        .mockImplementation(async () => {
+          /* do nothing */
+        });
 
-  it('should create FileOwner', async () => {
-    transaction.createdBy = getClient.invalid();
-    process.createdBy = getClient.invalid();
-    jest.spyOn(transactionsService, 'findOne').mockReturnValue(transaction);
-    jest.spyOn(processesService, 'findOne').mockReturnValue(process);
-    const processesServiceCreate = jest
-      .spyOn(processesService, 'create')
-      .mockImplementation(async () => {
-        /* do nothing */
-      });
-    await processesController.create(
-      transaction.id,
-      process.id,
-      getClient.valid(),
-    );
-    expect(processesServiceCreate).toHaveBeenCalledWith(
-      transaction.id,
-      process.id,
-      getClient.valid(),
-    );
-    expect(processesServiceCreate).toHaveBeenCalledTimes(1);
+      await processesController.create(
+        resource.transactionId,
+        resource.processId,
+        getClient.valid(),
+      );
+      expect(processesServiceCreate).toHaveBeenCalledWith(
+        resource.transactionId,
+        resource.processId,
+        getClient.valid(),
+      );
+      expect(processesServiceCreate).toHaveBeenCalledTimes(1);
+    });
+
+    it('TransactionOwner', () => {
+      /* nothing to do */
+    });
+
+    it('FileOwner', () => {
+      transaction.createdBy = getClient.invalid();
+      process.createdBy = getClient.invalid();
+    });
   });
 
   it('should not create NotFound', () => {
@@ -89,7 +78,11 @@ describe('ProcessesController', () => {
         /* do nothing */
       });
     expect(
-      processesController.create(transaction.id, process.id, getClient.valid()),
+      processesController.create(
+        resource.transactionId,
+        resource.processId,
+        getClient.valid(),
+      ),
     ).rejects.toThrow(NotFoundException);
     expect(processesServiceCreate).toHaveBeenCalledTimes(0);
   });
@@ -104,51 +97,39 @@ describe('ProcessesController', () => {
       });
     expect(
       processesController.create(
-        transaction.id,
-        process.id,
+        resource.transactionId,
+        resource.processId,
         getClient.attacker(),
       ),
     ).rejects.toThrow(ForbiddenException);
     expect(processesServiceCreate).toHaveBeenCalledTimes(0);
   });
 
-  it('should findOne TransactionOwner', () => {
-    jest.spyOn(transactionsService, 'findOne').mockReturnValue(transaction);
-    jest.spyOn(processesService, 'findOne').mockReturnValue(process);
-    expect(
-      processesController.findOne(
-        transaction.id,
-        process.id,
-        getClient.valid(),
-      ),
-    ).resolves.toEqual(process);
-  });
+  describe('should findOne as', () => {
+    afterEach(() => {
+      jest.spyOn(transactionsService, 'findOne').mockReturnValue(transaction);
+      jest.spyOn(processesService, 'findOne').mockReturnValue(process);
+      expect(
+        processesController.findOne(
+          resource.transactionId,
+          resource.processId,
+          getClient.valid(),
+        ),
+      ).resolves.toEqual(process);
+    });
 
-  it('should findOne ProcessOwner', () => {
-    transaction.createdBy = getClient.invalid();
-    jest.spyOn(transactionsService, 'findOne').mockReturnValue(transaction);
-    jest.spyOn(processesService, 'findOne').mockReturnValue(process);
-    expect(
-      processesController.findOne(
-        transaction.id,
-        process.id,
-        getClient.valid(),
-      ),
-    ).resolves.toEqual(process);
-  });
+    it('TransactionOwner', () => {
+      /* nothing to do */
+    });
 
-  it('should findOne FileOwner', () => {
-    transaction.createdBy = getClient.invalid();
-    process.createdBy = getClient.invalid();
-    jest.spyOn(transactionsService, 'findOne').mockReturnValue(transaction);
-    jest.spyOn(processesService, 'findOne').mockReturnValue(process);
-    expect(
-      processesController.findOne(
-        transaction.id,
-        process.id,
-        getClient.valid(),
-      ),
-    ).resolves.toEqual(process);
+    it('ProcessOwner', () => {
+      transaction.createdBy = getClient.invalid();
+    });
+
+    it('FileOwner', () => {
+      transaction.createdBy = getClient.invalid();
+      process.createdBy = getClient.invalid();
+    });
   });
 
   it('should not findOne NotFound', () => {
@@ -156,8 +137,8 @@ describe('ProcessesController', () => {
     jest.spyOn(processesService, 'findOne').mockReturnValue(undefined);
     expect(
       processesController.findOne(
-        transaction.id,
-        process.id,
+        resource.transactionId,
+        resource.processId,
         getClient.attacker(),
       ),
     ).rejects.toThrow(NotFoundException);
@@ -168,8 +149,8 @@ describe('ProcessesController', () => {
     jest.spyOn(processesService, 'findOne').mockReturnValue(process);
     expect(
       processesController.findOne(
-        transaction.id,
-        process.id,
+        resource.transactionId,
+        resource.processId,
         getClient.attacker(),
       ),
     ).rejects.toThrow(ForbiddenException);

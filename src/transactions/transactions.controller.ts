@@ -8,6 +8,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   Res,
   UseInterceptors,
 } from '@nestjs/common';
@@ -30,13 +31,26 @@ import { TransactionsService } from './transactions.service';
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
 
+  @Get()
+  async findMy(
+    @Client() client: ClientEntity,
+    @Query('filterUnprocessed') filterUnprocessed: Array<string> | string = [],
+  ): Promise<Map<string, Transaction>> {
+    let _filterUnprocessed: Array<string>;
+    if (typeof filterUnprocessed == 'string')
+      _filterUnprocessed = filterUnprocessed.split(',');
+    else _filterUnprocessed = filterUnprocessed;
+    _filterUnprocessed = _filterUnprocessed.map((value) => value.trim());
+    return this.transactionsService.findFiltered(client, _filterUnprocessed);
+  }
+
   @Post()
   async create(
     @Client() client: ClientEntity,
     @Res() res: Response,
   ): Promise<void> {
-    const transaction = await this.transactionsService.create(client);
-    res.setHeader('Location', res.req.url + '/' + transaction.id);
+    const transactionId = await this.transactionsService.create(client);
+    res.setHeader('Location', res.req.url + '/' + transactionId);
     res.send();
   }
 
@@ -82,6 +96,6 @@ export class TransactionsController {
     if (transaction.createdBy.domain != client.domain)
       throw new ForbiddenException();
 
-    await this.transactionsService.delete(transaction);
+    await this.transactionsService.delete(transactionId);
   }
 }

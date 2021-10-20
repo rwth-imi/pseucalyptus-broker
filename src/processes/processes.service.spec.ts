@@ -28,10 +28,7 @@ describe('ProcessesService', () => {
   });
 
   const { transaction, process, file } = getDataStructure();
-  const processWoFiles: Process = getProcess(
-    resource.transactionId,
-    resource.processId,
-  );
+  const processWoFiles: Process = getProcess();
 
   it('should create', async () => {
     jest
@@ -44,12 +41,13 @@ describe('ProcessesService', () => {
         /* do nothing */
       });
     await processesService.create(
-      transaction.id,
-      process.id,
+      resource.transactionId,
+      resource.processId,
       getClient.valid(),
     );
     expect(transactionsServiceSetProcess).toHaveBeenCalledWith(
-      transaction.id,
+      resource.transactionId,
+      resource.processId,
       processWoFiles,
     );
     expect(transactionsServiceSetProcess).toHaveBeenCalledTimes(1);
@@ -57,9 +55,9 @@ describe('ProcessesService', () => {
 
   it('should get', () => {
     jest.spyOn(transactionsService, 'findOne').mockReturnValue(transaction);
-    expect(processesService.findOne(transaction.id, process.id)).toEqual(
-      process,
-    );
+    expect(
+      processesService.findOne(resource.transactionId, resource.processId),
+    ).toEqual(process);
   });
 
   it('should setFile', async () => {
@@ -70,13 +68,19 @@ describe('ProcessesService', () => {
         /* do nothing */
       });
     const processFilesSet = jest.spyOn(process.files, 'set');
-    await processesService.setFile(transaction.id, process.id, file);
+    await processesService.setFile(
+      resource.transactionId,
+      resource.processId,
+      resource.fileId,
+      file,
+    );
     expect(transactionsServiceSetProcess).toHaveBeenCalledWith(
-      transaction.id,
+      resource.transactionId,
+      resource.processId,
       process,
     );
     expect(transactionsServiceSetProcess).toHaveBeenCalledTimes(1);
-    expect(processFilesSet).toHaveBeenCalledWith(file.id, file);
+    expect(processFilesSet).toHaveBeenCalledWith(resource.fileId, file);
     expect(processFilesSet).toHaveBeenCalledTimes(1);
   });
 });

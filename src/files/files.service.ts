@@ -21,13 +21,12 @@ export class FilesService {
     file: Stream,
   ): Promise<void> {
     const f: File = new File();
-    f.id = fileId;
     f.name = fileName;
     f.accessableBy = accessableBy;
     f.createdAt = new Date();
     f.mime = mime;
     await this.storageService.setFile(transactionId, processId, fileId, file);
-    await this.processesService.setFile(transactionId, processId, f);
+    await this.processesService.setFile(transactionId, processId, fileId, f);
   }
 
   findOne(transactionId: string, processId: string, fileId: string): File {
