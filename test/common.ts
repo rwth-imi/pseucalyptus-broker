@@ -18,6 +18,7 @@ export const fileCreateProp = {
   accessableBy: ['Next1', 'Next2'],
   mime: 'text/plain',
   file: new Stream(),
+  createdAt: '2011-06-06T18:00:00.000Z',
 };
 
 export const getClient = {
@@ -45,7 +46,7 @@ export const getTransaction = (
   withProcesses: Array<{ processId: string; process: Process }> = [],
 ): Transaction => {
   const transaction: Transaction = new Transaction();
-  transaction.createdAt = new Date('2011-06-06T18:00:00.000Z');
+  transaction.createdAt = new Date(fileCreateProp.createdAt);
   transaction.createdBy = getClient.valid();
   transaction.processes = new Map<string, Process>();
   withProcesses.forEach(({ processId, process }) => {
@@ -57,7 +58,7 @@ export const getProcess = (
   withFiles: Array<{ fileId: string; file: File }> = [],
 ): Process => {
   const process: Process = new Process();
-  process.createdAt = new Date('2011-06-06T18:00:00.000Z');
+  process.createdAt = new Date(fileCreateProp.createdAt);
   process.createdBy = getClient.valid();
   process.files = new Map<string, File>();
   withFiles.forEach(({ fileId, file }) => {
@@ -68,9 +69,9 @@ export const getProcess = (
 export const getFile = (fileId: string): File => {
   const file: File = new File();
   file.name = fileId;
-  file.createdAt = new Date('2011-06-06T18:00:00.000Z');
+  file.createdAt = new Date(fileCreateProp.createdAt);
   file.accessableBy = [getClient.valid().domain];
-  file.mime = 'text/plain';
+  file.mime = fileCreateProp.mime;
   return file;
 };
 

@@ -15,7 +15,7 @@ import { WebSocket } from 'ws';
 import { File } from './entities/file.entity';
 
 @Injectable()
-@WebSocketGateway({ path: '/v1/transactions' })
+@WebSocketGateway({ path: '/v1/files' })
 export class FilesGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {

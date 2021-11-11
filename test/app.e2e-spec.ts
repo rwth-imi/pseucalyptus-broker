@@ -248,7 +248,7 @@ describe('AppController (e2e)', () => {
       .expect(403);
   });
 
-  it('should echo websocket', () => {
+  it('should echo transactions websocket', () => {
     const echoMsg = {
       event: 'echo',
       data: 'ping',
@@ -263,17 +263,33 @@ describe('AppController (e2e)', () => {
       .expectClosed();
   });
 
-  it('should receive notification on file post', () => {
+  it('should echo files websocket', () => {
+    const echoMsg = {
+      event: 'echo',
+      data: 'ping',
+    };
+    return request(app.getHttpServer())
+      .ws('/v1/files')
+      .set('x-client-id', getClient.valid().id)
+      .set('x-client-domain', getClient.valid().domain)
+      .sendJson(echoMsg)
+      .expectJson(echoMsg)
+      .close()
+      .expectClosed();
+  });
+
+  it('should receive notification on file post with transactions websocket', () => {
     jest
       .useFakeTimers('modern')
       .setSystemTime(new Date('2011-06-06T18:00:00.000Z').getTime());
     const transaction = JSON.parse(transactionMetadata);
-    transaction.processes[resource.processId].files['FID2'] = {
-      accessableBy: fileCreateProp.accessableBy,
+    const file = {
+      accessableBy: [getClient.valid().domain],
       name: 'FID2',
       mime: fileCreateProp.mime,
       createdAt: '2011-06-06T18:00:00.000Z',
     };
+    transaction.processes[resource.processId].files['FID2'] = file;
     return request(app.getHttpServer())
       .ws('/v1/transactions')
       .set('x-client-id', getClient.valid().id)
@@ -285,17 +301,58 @@ describe('AppController (e2e)', () => {
               resource.transactionId +
               '/processes/' +
               resource.processId +
-              '/files/FID2',
+              '/files/' +
+              file.name,
           )
           .send(fileBlob)
           .set('x-client-id', getClient.valid().id)
           .set('x-client-domain', getClient.valid().domain)
-          .set('x-accessable-by', JSON.stringify(fileCreateProp.accessableBy))
-          .set('content-type', fileCreateProp.mime);
+          .set('x-accessable-by', JSON.stringify(file.accessableBy))
+          .set('content-type', file.mime);
       })
       .expectJson({
         transactionId: resource.transactionId,
         transaction: transaction,
+      })
+      .close()
+      .expectClosed();
+  });
+
+  it('should receive notification on file post with files websocket', () => {
+    jest
+      .useFakeTimers('modern')
+      .setSystemTime(new Date(fileCreateProp.createdAt).getTime());
+    const file = {
+      accessableBy: [getClient.valid().domain],
+      name: 'FID2',
+      mime: fileCreateProp.mime,
+      createdAt: fileCreateProp.createdAt,
+    };
+    return request(app.getHttpServer())
+      .ws('/v1/files')
+      .set('x-client-id', getClient.valid().id)
+      .set('x-client-domain', getClient.valid().domain)
+      .exec(async () => {
+        await request(app.getHttpServer())
+          .post(
+            '/transactions/' +
+              resource.transactionId +
+              '/processes/' +
+              resource.processId +
+              '/files/' +
+              file.name,
+          )
+          .send(fileBlob)
+          .set('x-client-id', getClient.valid().id)
+          .set('x-client-domain', getClient.valid().domain)
+          .set('x-accessable-by', JSON.stringify(file.accessableBy))
+          .set('content-type', file.mime);
+      })
+      .expectJson({
+        transactionId: resource.transactionId,
+        processId: resource.processId,
+        fileId: file.name,
+        file: file,
       })
       .close()
       .expectClosed();
