@@ -3,12 +3,14 @@ import { ProcessesService } from 'src/processes/processes.service';
 import { StorageService } from 'src/storage/storage.service';
 import { Stream } from 'stream';
 import { File } from './entities/file.entity';
+import { FilesGateway } from './files.gateway';
 
 @Injectable()
 export class FilesService {
   constructor(
     private readonly storageService: StorageService,
     private readonly processesService: ProcessesService,
+    private readonly filesGateway: FilesGateway,
   ) {}
 
   async create(
@@ -27,6 +29,7 @@ export class FilesService {
     f.mime = mime;
     await this.storageService.setFile(transactionId, processId, fileId, file);
     await this.processesService.setFile(transactionId, processId, fileId, f);
+    this.filesGateway.emit(transactionId, processId, fileId, f);
   }
 
   findOne(transactionId: string, processId: string, fileId: string): File {

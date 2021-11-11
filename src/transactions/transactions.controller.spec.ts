@@ -88,9 +88,9 @@ describe('TransactionsController', () => {
       });
 
       it('string-array', () => {
-        expect(
-          transactionsController.findMy(client, ['noPID']),
-        ).resolves.toEqual(map);
+        expect(transactionsController.findMy(client, 'noPID')).resolves.toEqual(
+          map,
+        );
       });
     });
   });

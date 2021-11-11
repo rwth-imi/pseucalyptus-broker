@@ -12,7 +12,7 @@ import {
   Res,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Response } from 'express';
 import { Client } from 'src/clients/decorators/client.decorator';
 import { Client as ClientEntity } from 'src/clients/entities/client.entity';
@@ -31,17 +31,24 @@ import { TransactionsService } from './transactions.service';
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
 
+  @ApiQuery({
+    name: 'filterUnprocessed',
+    required: false,
+    style: 'simple',
+    schema: { type: 'array', items: { type: 'string' } },
+  })
   @Get()
   async findMy(
     @Client() client: ClientEntity,
-    @Query('filterUnprocessed') filterUnprocessed: Array<string> | string = [],
+    @Query('filterUnprocessed') filterUnprocessed = '',
   ): Promise<Map<string, Transaction>> {
-    let _filterUnprocessed: Array<string>;
-    if (typeof filterUnprocessed == 'string')
-      _filterUnprocessed = filterUnprocessed.split(',');
-    else _filterUnprocessed = filterUnprocessed;
-    _filterUnprocessed = _filterUnprocessed.map((value) => value.trim());
-    return this.transactionsService.findFiltered(client, _filterUnprocessed);
+    return this.transactionsService.findFiltered(
+      client,
+      filterUnprocessed
+        .split(',')
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0),
+    );
   }
 
   @Post()

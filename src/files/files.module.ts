@@ -2,12 +2,13 @@ import { Module } from '@nestjs/common';
 import { ProcessesModule } from 'src/processes/processes.module';
 import { StorageModule } from 'src/storage/storage.module';
 import { FilesController } from './files.controller';
+import { FilesGateway } from './files.gateway';
 import { FilesService } from './files.service';
 
 @Module({
   imports: [StorageModule, ProcessesModule],
   controllers: [FilesController],
-  providers: [FilesService],
+  providers: [FilesService, FilesGateway],
   exports: [FilesService],
 })
 export class FilesModule {}

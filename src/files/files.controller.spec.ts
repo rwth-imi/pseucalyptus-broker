@@ -12,6 +12,7 @@ import { StorageService } from 'src/storage/storage.service';
 import { Stream } from 'stream';
 import { fileBlob, getClient, getDataStructure, resource } from 'test/common';
 import { FilesController } from './files.controller';
+import { FilesGateway } from './files.gateway';
 import { FilesService } from './files.service';
 
 describe('FilesController', () => {
@@ -23,7 +24,7 @@ describe('FilesController', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [StorageModule, ProcessesModule],
       controllers: [FilesController],
-      providers: [FilesService],
+      providers: [FilesService, FilesGateway],
     })
       .overrideProvider(StorageService)
       .useValue({})
@@ -40,12 +41,12 @@ describe('FilesController', () => {
 
   describe('create', () => {
     const createProp = {
-      accessableBy: ['Next1', 'Next2'],
+      accessableBy: 'Next1,Next2',
       mime: 'text/plain',
       file: new Stream(),
     };
 
-    it('should succeed', async () => {
+    it('should succeed comma-separated', async () => {
       const { process } = getDataStructure();
       jest.spyOn(processesService, 'findOne').mockReturnValue(process);
       const filesServiceCreate = jest
@@ -68,16 +69,16 @@ describe('FilesController', () => {
         resource.processId,
         resource.fileId,
         resource.fileId,
-        createProp.accessableBy,
+        createProp.accessableBy.split(',').map((v) => v.trim()),
         createProp.mime,
         createProp.file,
       );
     });
 
-    it('should succeed with workaround accessableBy as comma separated list', async () => {
+    it('should succeed JSON array', async () => {
       const { process } = getDataStructure();
       jest.spyOn(processesService, 'findOne').mockReturnValue(process);
-      const fileServiceCreate = jest
+      const filesServiceCreate = jest
         .spyOn(filesService, 'create')
         .mockImplementation(async () => {
           /* do nothing */
@@ -87,17 +88,57 @@ describe('FilesController', () => {
         resource.processId,
         resource.fileId,
         getClient.valid(),
-        (<unknown>createProp.accessableBy.join(',')) as Array<string>,
+        JSON.stringify(
+          createProp.accessableBy
+            .split(',')
+            .map((v) => v.trim())
+            .filter((v) => v.length > 0),
+        ),
         createProp.mime,
         createProp.file,
       );
-      expect(fileServiceCreate).toHaveBeenCalledTimes(1);
-      expect(fileServiceCreate).toHaveBeenCalledWith(
+      expect(filesServiceCreate).toHaveBeenCalledTimes(1);
+      expect(filesServiceCreate).toBeCalledWith(
         resource.transactionId,
         resource.processId,
         resource.fileId,
         resource.fileId,
-        createProp.accessableBy,
+        createProp.accessableBy
+          .split(',')
+          .map((v) => v.trim())
+          .filter((v) => v.length > 0),
+        createProp.mime,
+        createProp.file,
+      );
+    });
+
+    it('should succeed fallback comma-separated', async () => {
+      const { process } = getDataStructure();
+      jest.spyOn(processesService, 'findOne').mockReturnValue(process);
+      const filesServiceCreate = jest
+        .spyOn(filesService, 'create')
+        .mockImplementation(async () => {
+          /* do nothing */
+        });
+      await filesController.create(
+        resource.transactionId,
+        resource.processId,
+        resource.fileId,
+        getClient.valid(),
+        '{ "object": "' + createProp.accessableBy + '" }',
+        createProp.mime,
+        createProp.file,
+      );
+      expect(filesServiceCreate).toHaveBeenCalledTimes(1);
+      expect(filesServiceCreate).toBeCalledWith(
+        resource.transactionId,
+        resource.processId,
+        resource.fileId,
+        resource.fileId,
+        ('{ "object": "' + createProp.accessableBy + '" }')
+          .split(',')
+          .map((v) => v.trim())
+          .filter((v) => v.length > 0),
         createProp.mime,
         createProp.file,
       );

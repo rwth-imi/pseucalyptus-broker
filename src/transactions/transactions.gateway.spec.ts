@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { serialize } from 'class-transformer';
+import { StorageModule } from 'src/storage/storage.module';
+import { StorageService } from 'src/storage/storage.service';
 import { getClient, getDataStructure, resource } from 'test/common';
 import { WebSocket } from 'ws';
 import { Transaction } from './entities/transaction.entity';
@@ -7,6 +9,7 @@ import { TransactionsGateway } from './transactions.gateway';
 
 describe('TransactionsGateway', () => {
   let transactionsGateway: TransactionsGateway;
+  let storageService: StorageService;
   let logger;
 
   beforeEach(async () => {
@@ -17,12 +20,14 @@ describe('TransactionsGateway', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
+      imports: [StorageModule],
       providers: [TransactionsGateway],
     })
       .setLogger(logger)
       .compile();
 
     transactionsGateway = module.get<TransactionsGateway>(TransactionsGateway);
+    storageService = module.get<StorageService>(StorageService);
   });
 
   it('should be defined', () => {
@@ -45,6 +50,86 @@ describe('TransactionsGateway', () => {
       headers: { 'x-client-id': client.id, 'x-client-domain': client.domain },
     });
     expect(socket['clientDomain']).toBe(client.domain);
+  });
+
+  it('should handleConnection emitting transactions changed since date (header)', () => {
+    const { transaction } = getDataStructure();
+    const client = getClient.valid();
+    const socket = <WebSocket>(<unknown>jest.fn());
+    socket.send = jest.fn();
+    const storageServiceGetAclTransactions = jest
+      .spyOn(storageService, 'getAclTransactions')
+      .mockImplementation((domain: string) => {
+        const map = new Map<string, Transaction>();
+        if (
+          transaction.processes
+            .get(resource.processId)
+            .files.get(resource.fileId)
+            .accessableBy.includes(domain)
+        ) {
+          map.set(resource.transactionId, transaction);
+          return map;
+        } else return map;
+      });
+    const socketSend = jest.spyOn(socket, 'send').mockImplementation(() => {
+      // do nothing
+    });
+    transactionsGateway.handleConnection(socket, {
+      headers: {
+        'x-client-id': client.id,
+        'x-client-domain': client.domain,
+        date: transaction.createdAt.toUTCString(),
+      },
+    });
+    expect(storageServiceGetAclTransactions).toHaveBeenCalledTimes(1);
+    expect(storageServiceGetAclTransactions).toHaveBeenCalledWith(
+      client.domain,
+    );
+    expect(socketSend).toHaveBeenCalledTimes(1);
+    expect(socketSend).toHaveBeenCalledWith(
+      serialize<{ transactionId: string; transaction: Transaction }>(
+        {
+          transactionId: resource.transactionId,
+          transaction: transaction,
+        },
+        { enableCircularCheck: true },
+      ),
+    );
+  });
+
+  it('should handleConnection emitting transactions changed since date (header) with none available', () => {
+    const { transaction, process, file } = getDataStructure();
+    const date = transaction.createdAt;
+    file.createdAt = new Date(+file.createdAt - 1000);
+    process.createdAt = new Date(+process.createdAt - 1000);
+    transaction.createdAt = new Date(+transaction.createdAt - 1000);
+    const client = getClient.valid();
+    const socket = <WebSocket>(<unknown>jest.fn());
+    socket.send = jest.fn();
+    const storageServiceGetAclTransactions = jest
+      .spyOn(storageService, 'getAclTransactions')
+      .mockImplementation((domain: string) => {
+        const map = new Map<string, Transaction>();
+        if (file.accessableBy.includes(domain)) {
+          map.set(resource.transactionId, transaction);
+          return map;
+        } else return map;
+      });
+    const socketSend = jest.spyOn(socket, 'send').mockImplementation(() => {
+      // do nothing
+    });
+    transactionsGateway.handleConnection(socket, {
+      headers: {
+        'x-client-id': client.id,
+        'x-client-domain': client.domain,
+        date: date,
+      },
+    });
+    expect(storageServiceGetAclTransactions).toHaveBeenCalledTimes(1);
+    expect(storageServiceGetAclTransactions).toHaveBeenCalledWith(
+      client.domain,
+    );
+    expect(socketSend).toHaveBeenCalledTimes(0);
   });
 
   it('should handleConnection close unauthorized', () => {

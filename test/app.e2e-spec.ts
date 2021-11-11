@@ -1,10 +1,12 @@
 import { INestApplication } from '@nestjs/common';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as fs from 'fs';
+import { Server } from 'http';
 import * as path from 'path';
 import { AppModule } from 'src/app.module';
 import { File } from 'src/files/entities/file.entity';
-import * as request from 'supertest';
+import request from 'superwstest';
 import {
   fileBlob,
   fileCreateProp,
@@ -15,7 +17,6 @@ import {
 
 describe('AppController (e2e)', () => {
   let datadir: string;
-
   let app: INestApplication;
 
   afterAll(async () => {
@@ -48,10 +49,18 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useWebSocketAdapter(new WsAdapter(app));
     await app.init();
+    await new Promise<void>((resolve) => {
+      (app.getHttpServer() as Server).listen(0, resolve);
+    });
   });
 
   afterEach(async () => {
+    await new Promise<void>((resolve, reject) => {
+      (app.getHttpServer() as Server).close(reject);
+      resolve();
+    });
     await fs.promises.rm(datadir, { recursive: true });
   });
 
@@ -237,5 +246,58 @@ describe('AppController (e2e)', () => {
       .set('x-client-id', getClient.attacker().id)
       .set('x-client-domain', getClient.attacker().domain)
       .expect(403);
+  });
+
+  it('should echo websocket', () => {
+    const echoMsg = {
+      event: 'echo',
+      data: 'ping',
+    };
+    return request(app.getHttpServer())
+      .ws('/v1/transactions')
+      .set('x-client-id', getClient.valid().id)
+      .set('x-client-domain', getClient.valid().domain)
+      .sendJson(echoMsg)
+      .expectJson(echoMsg)
+      .close()
+      .expectClosed();
+  });
+
+  it('should receive notification on file post', () => {
+    jest
+      .useFakeTimers('modern')
+      .setSystemTime(new Date('2011-06-06T18:00:00.000Z').getTime());
+    const transaction = JSON.parse(transactionMetadata);
+    transaction.processes[resource.processId].files['FID2'] = {
+      accessableBy: fileCreateProp.accessableBy,
+      name: 'FID2',
+      mime: fileCreateProp.mime,
+      createdAt: '2011-06-06T18:00:00.000Z',
+    };
+    return request(app.getHttpServer())
+      .ws('/v1/transactions')
+      .set('x-client-id', getClient.valid().id)
+      .set('x-client-domain', getClient.valid().domain)
+      .exec(async () => {
+        await request(app.getHttpServer())
+          .post(
+            '/transactions/' +
+              resource.transactionId +
+              '/processes/' +
+              resource.processId +
+              '/files/FID2',
+          )
+          .send(fileBlob)
+          .set('x-client-id', getClient.valid().id)
+          .set('x-client-domain', getClient.valid().domain)
+          .set('x-accessable-by', JSON.stringify(fileCreateProp.accessableBy))
+          .set('content-type', fileCreateProp.mime);
+      })
+      .expectJson({
+        transactionId: resource.transactionId,
+        transaction: transaction,
+      })
+      .close()
+      .expectClosed();
   });
 });

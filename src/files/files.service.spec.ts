@@ -4,6 +4,7 @@ import { ProcessesService } from 'src/processes/processes.service';
 import { StorageModule } from 'src/storage/storage.module';
 import { StorageService } from 'src/storage/storage.service';
 import { fileCreateProp, getFile, getProcess, resource } from 'test/common';
+import { FilesGateway } from './files.gateway';
 import { FilesService } from './files.service';
 
 describe('FilesService', () => {
@@ -14,7 +15,7 @@ describe('FilesService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [StorageModule, ProcessesModule],
-      providers: [FilesService],
+      providers: [FilesService, FilesGateway],
     })
       .overrideProvider(StorageService)
       .useValue({

@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -12,13 +12,14 @@ import { Client } from 'src/clients/entities/client.entity';
 import { getClientHeaders } from 'src/clients/utils/get-client-headers.utils';
 import { StorageService } from 'src/storage/storage.service';
 import { WebSocket } from 'ws';
-import { Transaction } from './entities/transaction.entity';
+import { File } from './entities/file.entity';
 
+@Injectable()
 @WebSocketGateway({ path: '/v1/transactions' })
-export class TransactionsGateway
+export class FilesGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
-  private readonly log: Logger = new Logger(TransactionsGateway.name);
+  private readonly log: Logger = new Logger(FilesGateway.name);
 
   private readonly sockets: Map<string, Set<WebSocket>> = new Map<
     string,
@@ -28,7 +29,7 @@ export class TransactionsGateway
   constructor(private readonly storageService: StorageService) {}
 
   afterInit() {
-    this.log.log('TransactionsGateway initialized.');
+    this.log.log('FilesGateway initialized.');
   }
 
   handleConnection(socket: WebSocket, req: any) {
@@ -45,17 +46,15 @@ export class TransactionsGateway
         this.storageService
           .getAclTransactions(client.domain)
           .forEach((transaction, transactionId) => {
-            if (
-              transaction.createdAt >= date ||
-              Array.from(transaction.processes.values()).some(
-                (process) =>
-                  process.createdAt >= date ||
-                  Array.from(process.files.values()).some(
-                    (file) => file.createdAt >= date,
-                  ),
-              )
-            )
-              this.send(socket, transactionId, transaction);
+            transaction.processes.forEach((process, processId) => {
+              process.files.forEach((file, fileId) => {
+                if (
+                  file.accessableBy.includes(client.domain) &&
+                  file.createdAt >= date
+                )
+                  this.send(socket, transactionId, processId, fileId, file);
+              });
+            });
           });
       }
     } catch (UnauthorizedException) {
@@ -71,34 +70,39 @@ export class TransactionsGateway
     }
   }
 
-  emit(transactionId: string, transaction: Transaction) {
+  emit(transactionId: string, processId: string, fileId: string, file: File) {
     const resultSet: Set<WebSocket> = new Set<WebSocket>();
-    transaction.processes.forEach((process) => {
-      process.files.forEach((file) => {
-        file.accessableBy.forEach((domain: string) => {
-          const socketSet = this.sockets.get(domain);
-          if (socketSet)
-            socketSet.forEach((socket: WebSocket) => {
-              resultSet.add(socket);
-            });
+    file.accessableBy.forEach((domain: string) => {
+      const socketSet = this.sockets.get(domain);
+      if (socketSet)
+        socketSet.forEach((socket: WebSocket) => {
+          resultSet.add(socket);
         });
-      });
     });
     resultSet.forEach((socket: WebSocket) => {
-      this.send(socket, transactionId, transaction);
+      this.send(socket, transactionId, processId, fileId, file);
     });
   }
 
   private send(
     socket: WebSocket,
     transactionId: string,
-    transaction: Transaction,
+    processId: string,
+    fileId: string,
+    file: File,
   ) {
     socket.send(
-      serialize<{ transactionId: string; transaction: Transaction }>(
+      serialize<{
+        transactionId: string;
+        processId: string;
+        fileId: string;
+        file: File;
+      }>(
         {
           transactionId: transactionId,
-          transaction: transaction,
+          processId: processId,
+          fileId: fileId,
+          file: file,
         },
         { enableCircularCheck: true },
       ),

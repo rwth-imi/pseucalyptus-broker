@@ -10,7 +10,12 @@ import {
   Res,
   StreamableFile,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiHeader,
+} from '@nestjs/swagger';
 import { Response } from 'express';
 import { Client } from 'src/clients/decorators/client.decorator';
 import { Client as ClientEntity } from 'src/clients/entities/client.entity';
@@ -35,12 +40,17 @@ export class FilesController {
   // Guard: client == process.createdBy
   @Post()
   @ApiConsumes('application/octet-stream')
+  @ApiBody({})
+  @ApiHeader({
+    name: 'x-accessable-by',
+    schema: { type: 'array', items: { type: 'string' } },
+  })
   async create(
     @Param('transactionId') transactionId: string,
     @Param('processId') processId: string,
     @Param('fileId') fileId: string,
     @Client() client: ClientEntity,
-    @Headers('x-accessable-by') accessableBy: Array<string>,
+    @Headers('x-accessable-by') accessableBy: string,
     @Headers('content-type') mime: string,
     @Req() file: Stream,
   ): Promise<void> {
@@ -54,13 +64,17 @@ export class FilesController {
     if (!(process.createdBy.domain == client.domain))
       throw new ForbiddenException();
 
-    /**
-     * TODO: Workaround for invalid parsing of Array<string> header `string1,string2`
-     */
+    // Check for JSON-Array, otherwise interpret as comma-separated list
     let _accessableBy: Array<string>;
-    if (typeof accessableBy == 'string')
-      _accessableBy = (<string>accessableBy).split(',');
-    else _accessableBy = accessableBy;
+    try {
+      if (
+        !(_accessableBy = JSON.parse(accessableBy)) ||
+        !Array.isArray(_accessableBy)
+      )
+        throw new Error();
+    } catch (e) {
+      _accessableBy = (<string>accessableBy).split(',').map((v) => v.trim());
+    }
 
     await this.filesService.create(
       transactionId,
