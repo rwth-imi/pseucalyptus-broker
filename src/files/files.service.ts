@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { Client } from 'src/clients/entities/client.entity';
 import { ProcessesService } from 'src/processes/processes.service';
 import { StorageService } from 'src/storage/storage.service';
+import { TransactionsService } from 'src/transactions/transactions.service';
 import { Stream } from 'stream';
 import { File } from './entities/file.entity';
 import { FilesGateway } from './files.gateway';
@@ -9,6 +11,7 @@ import { FilesGateway } from './files.gateway';
 export class FilesService {
   constructor(
     private readonly storageService: StorageService,
+    private readonly transactionsService: TransactionsService,
     private readonly processesService: ProcessesService,
     private readonly filesGateway: FilesGateway,
   ) {}
@@ -36,6 +39,28 @@ export class FilesService {
     return this.processesService
       .findOne(transactionId, processId)
       .files.get(fileId);
+  }
+
+  findFiltered(
+    requestedBy: Client,
+    onlyWithoutProcesses: Array<string>,
+  ): Array<{
+    transactionId: string,
+    processId: string,
+    fileId: string,
+    file: File
+  }> {
+    const res = [];
+    this.transactionsService.findFiltered(requestedBy, onlyWithoutProcesses).forEach((transaction, transactionId) => {
+      transaction.processes.forEach((process, processId) => {
+        if(!onlyWithoutProcesses.includes(processId))
+          process.files.forEach((file, fileId) => {
+            if(file.accessableBy.includes(requestedBy.domain))
+              res.push({ transactionId, processId, fileId, file });
+          })
+      })
+    });
+    return res;
   }
 
   async getBlob(

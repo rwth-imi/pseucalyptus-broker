@@ -3,18 +3,22 @@ import { ProcessesModule } from 'src/processes/processes.module';
 import { ProcessesService } from 'src/processes/processes.service';
 import { StorageModule } from 'src/storage/storage.module';
 import { StorageService } from 'src/storage/storage.service';
-import { fileCreateProp, getFile, getProcess, resource } from 'test/common';
+import { Transaction } from 'src/transactions/entities/transaction.entity';
+import { TransactionsModule } from 'src/transactions/transactions.module';
+import { TransactionsService } from 'src/transactions/transactions.service';
+import { fileCreateProp, getClient, getDataStructure, getFile, getProcess, resource } from 'test/common';
 import { FilesGateway } from './files.gateway';
 import { FilesService } from './files.service';
 
 describe('FilesService', () => {
   let filesService: FilesService;
   let processesService: ProcessesService;
+  let transactionsService: TransactionsService;
   let storageService: StorageService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [StorageModule, ProcessesModule],
+      imports: [StorageModule, ProcessesModule, TransactionsModule],
       providers: [FilesService, FilesGateway],
     })
       .overrideProvider(StorageService)
@@ -26,6 +30,7 @@ describe('FilesService', () => {
 
     filesService = module.get<FilesService>(FilesService);
     processesService = module.get<ProcessesService>(ProcessesService);
+    transactionsService = module.get<TransactionsService>(TransactionsService);
     storageService = module.get<StorageService>(StorageService);
   });
 
@@ -92,6 +97,28 @@ describe('FilesService', () => {
         'NOT EXISTANT',
       ),
     ).toBeUndefined();
+  });
+
+  it('should findFiltered', () => {
+    const client = getClient.valid();
+    const map = new Map<string, Transaction>();
+    map.set(resource.transactionId, getDataStructure().transaction);
+    const resArr = [{
+      transactionId: resource.transactionId,
+      processId: resource.processId,
+      fileId: resource.fileId,
+      file: getFile(resource.fileId)
+    }];
+    jest.spyOn(transactionsService, 'findFiltered').mockReturnValue(map);
+    expect(
+      filesService.findFiltered(getClient.valid(), ['noPID']),
+    ).toEqual(resArr);
+    expect(
+      filesService.findFiltered(getClient.valid(), ['PID']),
+    ).toEqual([]);
+    expect(
+      filesService.findFiltered(getClient.invalid(), []),
+    ).toEqual([]);
   });
 
   it('should getBlob', async () => {

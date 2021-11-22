@@ -10,9 +10,8 @@ import request from 'superwstest';
 import {
   fileBlob,
   fileCreateProp,
-  getClient,
-  resource,
-  transactionMetadata,
+  getClient, resource,
+  transactionMetadata
 } from './common';
 
 describe('AppController (e2e)', () => {
@@ -246,6 +245,34 @@ describe('AppController (e2e)', () => {
       .set('x-client-id', getClient.attacker().id)
       .set('x-client-domain', getClient.attacker().domain)
       .expect(403);
+  });
+
+  it('/files (GET)', () => {
+    return request(app.getHttpServer())
+      .get('/files')
+      .set('x-client-id', getClient.valid().id)
+      .set('x-client-domain', getClient.valid().domain)
+      .expect(200)
+      .expect([{
+        transactionId: resource.transactionId,
+        processId: resource.processId,
+        fileId: resource.fileId,
+        file: {
+          accessableBy: [getClient.valid().domain],
+          name: resource.fileId,
+          createdAt: fileCreateProp.createdAt,
+          mime: fileCreateProp.mime
+        }
+      }]);
+  });
+
+  it('/files (GET) exclude PID', () => {
+    return request(app.getHttpServer())
+      .get('/files/?filterUnprocessed=PID')
+      .set('x-client-id', getClient.valid().id)
+      .set('x-client-domain', getClient.valid().domain)
+      .expect(200)
+      .expect([]);
   });
 
   it('should echo transactions websocket', () => {

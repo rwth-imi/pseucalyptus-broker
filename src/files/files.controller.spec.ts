@@ -9,6 +9,7 @@ import { ProcessesModule } from 'src/processes/processes.module';
 import { ProcessesService } from 'src/processes/processes.service';
 import { StorageModule } from 'src/storage/storage.module';
 import { StorageService } from 'src/storage/storage.service';
+import { TransactionsModule } from 'src/transactions/transactions.module';
 import { Stream } from 'stream';
 import { fileBlob, getClient, getDataStructure, resource } from 'test/common';
 import { FilesController } from './files.controller';
@@ -22,7 +23,7 @@ describe('FilesController', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [StorageModule, ProcessesModule],
+      imports: [StorageModule, ProcessesModule, TransactionsModule],
       controllers: [FilesController],
       providers: [FilesService, FilesGateway],
     })

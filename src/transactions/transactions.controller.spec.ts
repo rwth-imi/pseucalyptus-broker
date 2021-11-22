@@ -74,24 +74,9 @@ describe('TransactionsController', () => {
       expect(transactionsServiceFindFiltered).toHaveBeenCalledWith(client, []);
     });
 
-    describe('filter set', () => {
-      afterEach(() => {
-        expect(transactionsServiceFindFiltered).toHaveBeenCalledWith(client, [
-          'noPID',
-        ]);
-      });
-
-      it('string', () => {
-        expect(transactionsController.findMy(client, 'noPID')).resolves.toEqual(
-          map,
-        );
-      });
-
-      it('string-array', () => {
-        expect(transactionsController.findMy(client, 'noPID')).resolves.toEqual(
-          map,
-        );
-      });
+    it('filter set', () => {
+      expect(transactionsController.findMy(client, 'noPID')).resolves.toEqual(map);
+      expect(transactionsServiceFindFiltered).toHaveBeenCalledWith(client, ['noPID']);
     });
   });
 
