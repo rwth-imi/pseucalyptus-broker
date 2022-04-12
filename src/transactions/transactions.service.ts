@@ -30,16 +30,16 @@ export class TransactionsService {
     onlyWithoutProcesses: Array<string>,
   ): Map<string, Transaction> {
     const ts: Map<string, Transaction> = new Map<string, Transaction>();
-    this.storageService
-      .getAclTransactions(requestedBy.domain)
-      .forEach((value, key) => {
-        if (
-          !Array.from(value.processes.keys()).every((v) =>
-            onlyWithoutProcesses.includes(v),
-          )
+    for (const [key, value] of this.storageService.getAclTransactions(
+      requestedBy.domain,
+    )) {
+      if (
+        !Array.from(value.processes.keys()).every((v) =>
+          onlyWithoutProcesses.includes(v),
         )
-          ts.set(key, value);
-      });
+      )
+        ts.set(key, value);
+    }
     return ts;
   }
 

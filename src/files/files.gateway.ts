@@ -44,19 +44,20 @@ export class FilesGateway
       this.sockets.set(client.domain, set);
       if (req.headers['date']) {
         const date: Date = new Date(req.headers['date']);
-        this.storageService
-          .getAclTransactions(client.domain)
-          .forEach((transaction, transactionId) => {
-            transaction.processes.forEach((process, processId) => {
-              process.files.forEach((file, fileId) => {
-                if (
-                  file.accessableBy.includes(client.domain) &&
-                  file.createdAt >= date
-                )
-                  this.send(socket, transactionId, processId, fileId, file);
-              });
-            });
-          });
+        for (const [
+          transactionId,
+          transaction,
+        ] of this.storageService.getAclTransactions(client.domain)) {
+          for (const [processId, process] of transaction.processes) {
+            for (const [fileId, file] of process.files) {
+              if (
+                file.accessableBy.includes(client.domain) &&
+                file.createdAt >= date
+              )
+                this.send(socket, transactionId, processId, fileId, file);
+            }
+          }
+        }
       }
     } catch (UnauthorizedException) {
       socket.close(4401, 'Unauthorized');
@@ -73,16 +74,16 @@ export class FilesGateway
 
   emit(transactionId: string, processId: string, fileId: string, file: File) {
     const resultSet: Set<WebSocket> = new Set<WebSocket>();
-    file.accessableBy.forEach((domain: string) => {
+    for (const domain of file.accessableBy) {
       const socketSet = this.sockets.get(domain);
       if (socketSet)
-        socketSet.forEach((socket: WebSocket) => {
+        for (const socket of socketSet) {
           resultSet.add(socket);
-        });
-    });
-    resultSet.forEach((socket: WebSocket) => {
+        }
+    }
+    for (const socket of resultSet) {
       this.send(socket, transactionId, processId, fileId, file);
-    });
+    }
   }
 
   private send(

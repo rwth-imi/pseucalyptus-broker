@@ -46,30 +46,30 @@ export class StorageService {
       .readdirSync(this.transactionsDir, { withFileTypes: true })
       .filter((dirent) => dirent.isDirectory())
       .map((dirent) => decodeURIComponent(dirent.name));
-    transactionIds.forEach((transactionId) => {
+    for (const transactionId of transactionIds) {
       const transaction: Transaction = deserialize<Transaction>(
         Transaction,
         fs.readFileSync(this.transactionMetadataPath(transactionId)).toString(),
       );
       this.cacheTransaction(transactionId, transaction);
-    });
+    }
   }
 
   private cacheTransaction(
     transactionId: string,
     transaction: Transaction,
   ): void {
-    transaction.processes.forEach((process) => {
-      process.files.forEach((file) => {
-        file.accessableBy.forEach((domain: string) => {
+    for (const [, process] of transaction.processes) {
+      for (const [, file] of process.files) {
+        for (const domain of file.accessableBy) {
           let aclMap: Map<string, Transaction>;
           if (this.acl.has(domain)) aclMap = this.acl.get(domain);
           else aclMap = new Map<string, Transaction>();
           aclMap.set(transactionId, transaction);
           this.acl.set(domain, aclMap);
-        });
-      });
-    });
+        }
+      }
+    }
     this.transactions.set(transactionId, transaction);
   }
 

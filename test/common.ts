@@ -49,9 +49,9 @@ export const getTransaction = (
   transaction.createdAt = new Date(fileCreateProp.createdAt);
   transaction.createdBy = getClient.valid();
   transaction.processes = new Map<string, Process>();
-  withProcesses.forEach(({ processId, process }) => {
-    transaction.processes.set(processId, process);
-  });
+  for (const p of withProcesses) {
+    transaction.processes.set(p.processId, p.process);
+  }
   return transaction;
 };
 export const getProcess = (
@@ -61,9 +61,9 @@ export const getProcess = (
   process.createdAt = new Date(fileCreateProp.createdAt);
   process.createdBy = getClient.valid();
   process.files = new Map<string, File>();
-  withFiles.forEach(({ fileId, file }) => {
-    process.files.set(fileId, file);
-  });
+  for (const f of withFiles) {
+    process.files.set(f.fileId, f.file);
+  }
   return process;
 };
 export const getFile = (fileId: string): File => {

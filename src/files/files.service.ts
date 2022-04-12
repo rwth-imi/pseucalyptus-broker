@@ -51,17 +51,21 @@ export class FilesService {
     file: File;
   }> {
     const res = [];
-    this.transactionsService
-      .findFiltered(requestedBy, onlyWithoutProcesses)
-      .forEach((transaction, transactionId) => {
-        transaction.processes.forEach((process, processId) => {
-          if (!onlyWithoutProcesses.includes(processId))
-            process.files.forEach((file, fileId) => {
-              if (file.accessableBy.includes(requestedBy.domain))
-                res.push({ transactionId, processId, fileId, file });
-            });
-        });
-      });
+    for (const [
+      transactionId,
+      transaction,
+    ] of this.transactionsService.findFiltered(
+      requestedBy,
+      onlyWithoutProcesses,
+    )) {
+      for (const [processId, process] of transaction.processes) {
+        if (!onlyWithoutProcesses.includes(processId))
+          for (const [fileId, file] of process.files) {
+            if (file.accessableBy.includes(requestedBy.domain))
+              res.push({ transactionId, processId, fileId, file });
+          }
+      }
+    }
     return res;
   }
 

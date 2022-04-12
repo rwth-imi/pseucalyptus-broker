@@ -43,21 +43,22 @@ export class TransactionsGateway
       this.sockets.set(client.domain, set);
       if (req.headers['date']) {
         const date: Date = new Date(req.headers['date']);
-        this.storageService
-          .getAclTransactions(client.domain)
-          .forEach((transaction, transactionId) => {
-            if (
-              transaction.createdAt >= date ||
-              Array.from(transaction.processes.values()).some(
-                (process) =>
-                  process.createdAt >= date ||
-                  Array.from(process.files.values()).some(
-                    (file) => file.createdAt >= date,
-                  ),
-              )
+        for (const [
+          transactionId,
+          transaction,
+        ] of this.storageService.getAclTransactions(client.domain)) {
+          if (
+            transaction.createdAt >= date ||
+            Array.from(transaction.processes.values()).some(
+              (process) =>
+                process.createdAt >= date ||
+                Array.from(process.files.values()).some(
+                  (file) => file.createdAt >= date,
+                ),
             )
-              this.send(socket, transactionId, transaction);
-          });
+          )
+            this.send(socket, transactionId, transaction);
+        }
       }
     } catch (UnauthorizedException) {
       socket.close(4401, 'Unauthorized');
@@ -74,20 +75,20 @@ export class TransactionsGateway
 
   emit(transactionId: string, transaction: Transaction) {
     const resultSet: Set<WebSocket> = new Set<WebSocket>();
-    transaction.processes.forEach((process) => {
-      process.files.forEach((file) => {
-        file.accessableBy.forEach((domain: string) => {
+    for (const [, process] of transaction.processes) {
+      for (const [, file] of process.files) {
+        for (const domain of file.accessableBy) {
           const socketSet = this.sockets.get(domain);
           if (socketSet)
-            socketSet.forEach((socket: WebSocket) => {
+            for (const socket of socketSet) {
               resultSet.add(socket);
-            });
-        });
-      });
-    });
-    resultSet.forEach((socket: WebSocket) => {
+            }
+        }
+      }
+    }
+    for (const socket of resultSet) {
       this.send(socket, transactionId, transaction);
-    });
+    }
   }
 
   private send(
