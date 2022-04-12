@@ -17,11 +17,13 @@ describe('FilesListingController', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [StorageModule, ProcessesModule, TransactionsModule],
       controllers: [FilesListingController],
-      providers: [FilesService, FilesGateway]
+      providers: [FilesService, FilesGateway],
     }).compile();
 
     filesService = module.get<FilesService>(FilesService);
-    filesListingController = module.get<FilesListingController>(FilesListingController);
+    filesListingController = module.get<FilesListingController>(
+      FilesListingController,
+    );
   });
 
   it('should be defined', () => {
@@ -30,17 +32,24 @@ describe('FilesListingController', () => {
 
   describe('should findMy', () => {
     let client: Client;
-    let resArr: Array<{ transactionId: string, processId: string, fileId: string, file: File }>;
+    let resArr: Array<{
+      transactionId: string;
+      processId: string;
+      fileId: string;
+      file: File;
+    }>;
     let filesServiceFindFiltered;
 
     beforeEach(() => {
       client = getClient.valid();
-      resArr = [{
-        transactionId: resource.transactionId,
-        processId: resource.processId,
-        fileId: resource.fileId,
-        file: getFile(resource.fileId)
-      }];
+      resArr = [
+        {
+          transactionId: resource.transactionId,
+          processId: resource.processId,
+          fileId: resource.fileId,
+          file: getFile(resource.fileId),
+        },
+      ];
       filesServiceFindFiltered = jest
         .spyOn(filesService, 'findFiltered')
         .mockReturnValue(resArr);

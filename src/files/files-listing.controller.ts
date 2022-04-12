@@ -12,9 +12,7 @@ import { FilesService } from './files.service';
   path: 'files',
 })
 export class FilesListingController {
-  constructor(
-    private readonly filesService: FilesService,
-  ) {}
+  constructor(private readonly filesService: FilesService) {}
 
   @ApiQuery({
     name: 'filterUnprocessed',
@@ -27,17 +25,17 @@ export class FilesListingController {
     @Client() client: ClientEntity,
     @Query('filterUnprocessed') filterUnprocessed = '',
   ): Array<{
-    transactionId: string,
-    processId: string,
-    fileId: string,
-    file: File
+    transactionId: string;
+    processId: string;
+    fileId: string;
+    file: File;
   }> {
     return this.filesService.findFiltered(
       client,
       filterUnprocessed
         .split(',')
-        .map(v => v.trim())
-        .filter(v => v.length > 0),
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0),
     );
   }
 }

@@ -45,21 +45,23 @@ export class FilesService {
     requestedBy: Client,
     onlyWithoutProcesses: Array<string>,
   ): Array<{
-    transactionId: string,
-    processId: string,
-    fileId: string,
-    file: File
+    transactionId: string;
+    processId: string;
+    fileId: string;
+    file: File;
   }> {
     const res = [];
-    this.transactionsService.findFiltered(requestedBy, onlyWithoutProcesses).forEach((transaction, transactionId) => {
-      transaction.processes.forEach((process, processId) => {
-        if(!onlyWithoutProcesses.includes(processId))
-          process.files.forEach((file, fileId) => {
-            if(file.accessableBy.includes(requestedBy.domain))
-              res.push({ transactionId, processId, fileId, file });
-          })
-      })
-    });
+    this.transactionsService
+      .findFiltered(requestedBy, onlyWithoutProcesses)
+      .forEach((transaction, transactionId) => {
+        transaction.processes.forEach((process, processId) => {
+          if (!onlyWithoutProcesses.includes(processId))
+            process.files.forEach((file, fileId) => {
+              if (file.accessableBy.includes(requestedBy.domain))
+                res.push({ transactionId, processId, fileId, file });
+            });
+        });
+      });
     return res;
   }
 

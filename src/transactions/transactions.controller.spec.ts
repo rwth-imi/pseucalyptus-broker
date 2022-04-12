@@ -75,8 +75,12 @@ describe('TransactionsController', () => {
     });
 
     it('filter set', () => {
-      expect(transactionsController.findMy(client, 'noPID')).resolves.toEqual(map);
-      expect(transactionsServiceFindFiltered).toHaveBeenCalledWith(client, ['noPID']);
+      expect(transactionsController.findMy(client, 'noPID')).resolves.toEqual(
+        map,
+      );
+      expect(transactionsServiceFindFiltered).toHaveBeenCalledWith(client, [
+        'noPID',
+      ]);
     });
   });
 
