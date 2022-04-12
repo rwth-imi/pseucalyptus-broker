@@ -18,7 +18,8 @@ import {
 import { StorageService } from './storage.service';
 
 describe.each([undefined, 'data2'])('StorageService', (datadir: string) => {
-  const tpath: string = path.join(datadir ? datadir : 'data', 'transactions');
+  if (!datadir) datadir = 'data';
+  const tpath: string = path.join(datadir, 'transactions');
 
   let storageService: StorageService;
 

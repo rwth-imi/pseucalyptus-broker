@@ -16,10 +16,7 @@ export class StorageService {
     Map<string, Transaction>
   >();
 
-  private readonly transactionsDir = path.join(
-    process.env.DATADIR ? process.env.DATADIR : 'data',
-    'transactions',
-  );
+  private readonly transactionsDir;
   private readonly transactionPath = (transactionId: string) =>
     path.join(this.transactionsDir, encodeURIComponent(transactionId));
   private readonly transactionMetadataPath = (transactionId: string) =>
@@ -40,6 +37,10 @@ export class StorageService {
     );
 
   constructor() {
+    let datadir;
+    if (process.env.DATADIR) datadir = process.env.DATADIR;
+    else datadir = 'data';
+    this.transactionsDir = path.join(datadir, 'transactions');
     fs.mkdirSync(this.transactionsDir, { recursive: true });
     const transactionIds: string[] = fs
       .readdirSync(this.transactionsDir, { withFileTypes: true })
@@ -61,9 +62,9 @@ export class StorageService {
     transaction.processes.forEach((process) => {
       process.files.forEach((file) => {
         file.accessableBy.forEach((domain: string) => {
-          const aclMap: Map<string, Transaction> = this.acl.has(domain)
-            ? this.acl.get(domain)
-            : new Map<string, Transaction>();
+          let aclMap: Map<string, Transaction>;
+          if (this.acl.has(domain)) aclMap = this.acl.get(domain);
+          else aclMap = new Map<string, Transaction>();
           aclMap.set(transactionId, transaction);
           this.acl.set(domain, aclMap);
         });
@@ -89,7 +90,8 @@ export class StorageService {
 
   getAclTransactions(domain: string): Map<string, Transaction> {
     const t = this.acl.get(domain);
-    return t ? t : new Map<string, Transaction>();
+    if (t) return t;
+    else return new Map<string, Transaction>();
   }
 
   async deleteTransaction(transactionId: string): Promise<void> {

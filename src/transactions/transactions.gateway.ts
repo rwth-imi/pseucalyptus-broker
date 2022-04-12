@@ -35,9 +35,10 @@ export class TransactionsGateway
     try {
       const client: Client = getClientHeaders(req.headers);
       socket['clientDomain'] = client.domain;
-      const set = this.sockets.has(client.domain)
-        ? this.sockets.get(client.domain)
-        : new Set<WebSocket>();
+      let set;
+      if (this.sockets.has(client.domain))
+        set = this.sockets.get(client.domain);
+      else set = new Set<WebSocket>();
       set.add(socket);
       this.sockets.set(client.domain, set);
       if (req.headers['date']) {
